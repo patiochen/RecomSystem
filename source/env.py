@@ -1,6 +1,4 @@
 import numpy as np
-import torch
-import torch.nn as nn
 from data_preprocessing import state_action_rewards
 
 # Define the Reinforcement Learning Environment
@@ -9,14 +7,14 @@ class RecommenderEnv:
         self.data = data
         self.num_items = num_items
         self.window_size = window_size
-        self.reset()
+        self.env_reset()
 
-    def reset(self):
+    def env_reset(self):
         self.current_step = 0
         self.state = [0] * self.window_size
         return self.state
 
-    def step(self, action):
+    def env_step(self, action):
         reward = 0
         done = False
 
