@@ -2,115 +2,171 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-import random
-from collections import deque
+import matplotlib.pyplot as plt
 
 
 class DQN(nn.Module):
-    def __init__(self, state_size, action_size, hidden_size=64):
+    def __init__(self, state_size, action_size):
         super(DQN, self).__init__()
-        self.network = nn.Sequential(
-            nn.Linear(state_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, action_size)
-        )
-
-        # 使用较小的初始值初始化权重
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight, gain=0.01)
-                nn.init.constant_(m.bias, 0)
+        self.fc1 = nn.Linear(state_size, 64)
+        self.fc2 = nn.Linear(64, 32)
+        self.fc3 = nn.Linear(32, action_size)
 
     def forward(self, x):
-        return self.network(x)
+        x = torch.relu(self.fc1(x))
+        x = torch.relu(self.fc2(x))
+        return self.fc3(x)
 
 
-class DQNAgent:
-    def __init__(
-            self,
-            state_size,
-            action_size,
-            hidden_size=64,  # 隐藏层大小
-            learning_rate=1e-4,  # 学习率
-            gamma=0.95,  # 折扣因子
-            epsilon=1.0,
-            epsilon_min=0.1,
-            epsilon_decay=0.995,
-            memory_size=10000,
-            batch_size=32,
-            target_update=200
-    ):
-        self.state_size = state_size
-        self.action_size = action_size
-        self.memory_size = memory_size
-        self.batch_size = batch_size
-        self.gamma = gamma
-        self.epsilon = epsilon
-        self.epsilon_min = epsilon_min
-        self.epsilon_decay = epsilon_decay
-        self.target_update = target_update
-        self.learning_rate = learning_rate
+def load_training_data():
+    train_data = []
+    with open('dataset/train_data.txt', 'r') as f:
+        for line in f:
+            try:
+                state_part, rest = line.split('],')
+                state_str = state_part.strip('[')
+                state = [int(x.strip().strip("'")) for x in state_str.split(',')]
+                action, reward = rest.strip().split(',')
+                action = int(action)
+                reward = float(reward)
+                train_data.append((state, action, reward))
+            except Exception as e:
+                continue
+    return train_data
 
-        # 创建Q网络和目标网络
-        self.q_network = DQN(state_size, action_size, hidden_size)
-        self.target_network = DQN(state_size, action_size, hidden_size)
-        self.target_network.load_state_dict(self.q_network.state_dict())
 
-        # 使用Huber Loss代替MSE
-        self.criterion = nn.SmoothL1Loss()
-        self.optimizer = optim.Adam(self.q_network.parameters(), lr=learning_rate)
-        self.memory = deque(maxlen=memory_size)
-        self.steps = 0
+def plot_training_metrics(loss_history, reward_history, q_value_history, recommend_history):
+    plt.figure(figsize=(20, 5))
 
-    def remember(self, state, action, reward, next_state, done):
-        self.memory.append((state, action, reward, next_state, done))
+    # 绘制loss曲线
+    plt.subplot(141)
+    plt.plot(loss_history)
+    plt.title('Loss per Episode')
+    plt.xlabel('Episode')
+    plt.ylabel('Loss')
 
-    def choose_action(self, state):
-        if random.random() < self.epsilon:
-            return random.randrange(self.action_size)
+    # 绘制平均reward曲线
+    plt.subplot(142)
+    plt.plot(reward_history)
+    plt.title('Average Reward per Episode')
+    plt.xlabel('Episode')
+    plt.ylabel('Average Reward')
 
-        with torch.no_grad():
-            state = torch.FloatTensor(state).unsqueeze(0)
-            q_values = self.q_network(state)
-            return q_values.argmax().item()
+    # 绘制平均Q值曲线
+    plt.subplot(143)
+    plt.plot(q_value_history)
+    plt.title('Average Q-Value per Episode')
+    plt.xlabel('Episode')
+    plt.ylabel('Average Q-Value')
 
-    def train(self):
-        if len(self.memory) < self.batch_size:
-            return None
+    # 绘制推荐频率TOP 10
+    plt.subplot(144)
+    items = sorted(recommend_history.items(), key=lambda x: x[1], reverse=True)[:10]
+    items_id = [str(x[0]) for x in items]
+    items_freq = [x[1] for x in items]
+    plt.bar(items_id, items_freq)
+    plt.title('Top 10 Recommended Items')
+    plt.xlabel('Item ID')
+    plt.ylabel('Recommendation Frequency')
+    plt.xticks(rotation=45)
 
-        batch = random.sample(self.memory, self.batch_size)
+    plt.tight_layout()
+    plt.savefig('training_metrics.png')
+    plt.close()
 
-        states = np.array([experience[0] for experience in batch], dtype=np.float32)
-        actions = np.array([experience[1] for experience in batch], dtype=np.int64)
-        rewards = np.array([experience[2] for experience in batch], dtype=np.float32)
-        next_states = np.array([experience[3] for experience in batch], dtype=np.float32)
-        dones = np.array([experience[4] for experience in batch], dtype=np.float32)
 
-        states = torch.FloatTensor(states)
-        actions = torch.LongTensor(actions)
-        rewards = torch.FloatTensor(rewards)
-        next_states = torch.FloatTensor(next_states)
-        dones = torch.FloatTensor(dones)
+def train_dqn(epochs=200, batch_size=32):
+    state_size = 5
+    action_size = 8885
 
-        current_q_values = self.q_network(states).gather(1, actions.unsqueeze(1))
+    # 历史记录
+    loss_history = []
+    reward_history = []
+    q_value_history = []
+    recommend_history = {}
 
-        with torch.no_grad():
-            next_q_values = self.target_network(next_states).max(1)[0]
-            target_q_values = rewards + (1 - dones) * self.gamma * next_q_values
+    try:
+        train_data = load_training_data()
+        print(f"Loaded {len(train_data)} training samples")
 
-        loss = self.criterion(current_q_values.squeeze(), target_q_values)
+        if len(train_data) < batch_size:
+            raise ValueError(f"Not enough training data")
 
-        self.optimizer.zero_grad()
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.q_network.parameters(), 1.0)
-        self.optimizer.step()
+        policy_net = DQN(state_size, action_size)
+        target_net = DQN(state_size, action_size)
+        target_net.load_state_dict(policy_net.state_dict())
 
-        self.steps += 1
-        if self.steps % self.target_update == 0:
-            self.target_network.load_state_dict(self.q_network.state_dict())
+        optimizer = optim.Adam(policy_net.parameters(), lr=0.001)
+        criterion = nn.MSELoss()
 
-        self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
+        for epoch in range(epochs):
+            total_loss = 0
+            total_reward = 0
+            total_q = 0
+            n_samples = 0
+            np.random.shuffle(train_data)
 
-        return loss.item()
+            n_batches = 0
+            for i in range(0, len(train_data), batch_size):
+                batch = train_data[i:i + batch_size]
+                if len(batch) < batch_size:
+                    continue
+
+                states = torch.FloatTensor([x[0] for x in batch])
+                actions = torch.LongTensor([x[1] for x in batch])
+                rewards = torch.FloatTensor([x[2] for x in batch])
+
+                q_values = policy_net(states)
+                q_value = q_values.gather(1, actions.unsqueeze(1))
+
+                loss = criterion(q_value.squeeze(), rewards)
+
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                total_loss += loss.item()
+                total_reward += rewards.sum().item()
+                total_q += q_values.mean().item()
+                n_samples += len(batch)
+
+                # 记录推荐的商品
+                predictions = q_values.argmax(dim=1)
+                for pred in predictions:
+                    item_id = pred.item()
+                    recommend_history[item_id] = recommend_history.get(item_id, 0) + 1
+
+                n_batches += 1
+
+            # 更新目标网络
+            if epoch % 5 == 0:
+                target_net.load_state_dict(policy_net.state_dict())
+
+            # 记录每个epoch的平均指标
+            if n_batches > 0:
+                avg_loss = total_loss / n_batches
+                avg_reward = total_reward / n_samples  # 使用平均reward
+                avg_q = total_q / n_batches
+
+                loss_history.append(avg_loss)
+                reward_history.append(avg_reward)
+                q_value_history.append(avg_q)
+
+                print(
+                    f"Epoch {epoch + 1}/{epochs}, Loss: {avg_loss:.4f}, Avg Reward: {avg_reward:.4f}, Avg Q: {avg_q:.4f}")
+
+        # 绘制训练指标
+        plot_training_metrics(loss_history, reward_history, q_value_history, recommend_history)
+        return policy_net
+
+    except Exception as e:
+        print(f"Training error: {str(e)}")
+        return None
+
+if __name__ == "__main__":
+    model = train_dqn()
+    if model is not None:
+        torch.save(model.state_dict(), 'recommender_model.pth')
+        print("Training completed and model saved!")
+    else:
+        print("Training failed!")

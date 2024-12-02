@@ -1,50 +1,57 @@
 import numpy as np
-from typing import List, Tuple, Dict
 
 
-class RecEnvironment:
-    def __init__(self, state_action_rewards: List[Tuple], window_size: int = 5):
-        self.window_size = window_size
-        self.state_action_rewards = state_action_rewards
-        self.actions = list(set([action for _, action, _ in self.state_action_rewards]))
-        self.n_actions = len(self.actions)
-        self.reset()
+class RecommendEnv:
+    def __init__(self):
+        # 初始化环境
+        self.state_size = 5
+        self.state = [0] * self.state_size
+        self.data = []
+        self.current_step = 0
+        self._load_data()
 
-    def step(self, action: int) -> Tuple[float, bool]:
-        if self.current_step >= len(self.state_action_rewards) - 1:
-            return 0, True
+    def _load_data(self):
+        # 只加载训练数据
+        with open('dataset/train_data.txt', 'r') as f:
+            self.data = f.readlines()
 
-        _, true_action, reward = self.state_action_rewards[self.current_step]
+    def reset(self):
+        # 重置环境
+        self.state = [0] * self.state_size
+        self.current_step = 0
+        return self.state
 
-        # 修改reward机制
+    def step(self, action):
+        if self.current_step >= len(self.data):
+            return self.state, 0, True, {}
+
+        # 获取真实的动作和奖励
+        line = self.data[self.current_step].strip()
+        true_action = int(line.split(',')[-2])
+        reward = float(line.split(',')[-1])
+
+        # 更新状态和奖励
         if action == true_action:
-            if reward == 1.0:  # 购买行为
-                actual_reward = 5.0  # 大幅提高购买的奖励
-            elif reward == 0.5:  # 加购行为
-                actual_reward = 2.0  # 提高加购的奖励
-            else:
-                actual_reward = 0.0
+            obtained_reward = reward
+            self.state = self.state[1:] + [action]
         else:
-            actual_reward = -0.1  # 添加小的负奖励
+            obtained_reward = 0
 
         self.current_step += 1
-        done = self.current_step >= len(self.state_action_rewards) - 1
+        done = (self.current_step >= len(self.data))
 
-        return actual_reward, done
+        return self.state, obtained_reward, done, {}
 
-    def reset(self) -> List[int]:
-        self.current_step = 0
-        initial_state, _, _ = self.state_action_rewards[0]
-        return initial_state
 
-    def get_valid_actions(self) -> List[int]:
-        history_items = set()
-        start = max(0, self.current_step - 100)
-        for i in range(start, self.current_step):
-            _, action, _ = self.state_action_rewards[i]
-            history_items.add(action)
-        return list(history_items)
+if __name__ == "__main__":
+    env = RecommendEnv()
+    state = env.reset()
+    print(f"Initial state: {state}")
 
-    def get_current_state(self) -> List[int]:
-        state, _, _ = self.state_action_rewards[self.current_step]
-        return state
+    action = 1  # 测试动作
+    next_state, reward, done, _ = env.step(action)
+
+    print(f"Action: {action}")
+    print(f"Next state: {next_state}")
+    print(f"Reward: {reward}")
+    print(f"Done: {done}")

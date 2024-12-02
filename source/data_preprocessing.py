@@ -1,40 +1,59 @@
 import pandas as pd
 
-# Step 1: Data Preprocessing
-# Load the data
-data_view = pd.read_csv('dataset/view_ecommerce.dat', sep='\t', header=None, names=['visitorid', 'itemid', 'event'])
-data_cart = pd.read_csv('dataset/add_to_cart_ecommerce.dat', sep='\t', header=None, names=['visitorid', 'itemid', 'event'])
-data_purchase = pd.read_csv('dataset/purchase_ecommerce.dat', sep='\t', header=None, names=['visitorid', 'itemid', 'event'])
+# 加载数据
+data_cart = pd.read_csv('dataset/add_to_cart_ecommerce.dat', sep='\t', header=None,
+                        names=['visitorid', 'itemid', 'event'])
+data_purchase = pd.read_csv('dataset/purchase_ecommerce.dat', sep='\t', header=None,
+                            names=['visitorid', 'itemid', 'event'])
 
-# Assign rewards based on event type
-data_view['reward'] = 0
-data_cart['reward'] = 0.5
-data_purchase['reward'] = 1.0
+# 设置奖励值
+data_cart['reward'] = 1  # 加购物车奖励为1
+data_purchase['reward'] = 5  # 购买奖励为5
 
-# Combine all data
-data = pd.concat([data_view, data_cart, data_purchase])
+# 合并加购和购买数据，按用户ID排序
+data_positive = pd.concat([data_cart, data_purchase])
+data_positive = data_positive.sort_values(['visitorid', 'event'])
 
-# Add a timestamp to simulate order
-data['timestamp'] = data.groupby('visitorid').cumcount() + 1
+# 设置状态窗口大小
+N = 5
 
-# Define state history window size
-window_size = 5
+all_records = []
 
-# Create state-action-reward tuples
-state_action_rewards = []
-for visitor, group in data.groupby('visitorid'):
-    group = group.sort_values(by='timestamp')
-    item_ids = list(group['itemid'])
+# 对每个用户处理数据
+for visitor, group in data_positive.groupby('visitorid'):
+    # 初始状态
+    current_state = [0] * N
+    items = list(group['itemid'])
     rewards = list(group['reward'])
 
-    for i in range(1, len(item_ids)):
-        state = item_ids[max(0, i - window_size):i]
-        state = [0] * (window_size - len(state)) + state  # Pad with 0 if less than window_size
-        action = item_ids[i]
+    # 获取该用户的所有商品和对应的奖励
+    for i in range(len(items)):
+        item = items[i]
         reward = rewards[i]
-        state_action_rewards.append((state, action, reward))
 
-# Save state-action-reward tuples to a text file
-with open('dataset/state_action_rewards.txt', 'w') as f:
-    for state, action, reward in state_action_rewards:
-        f.write(f"State: {state}, Action: {action}, Reward: {reward}\n")
+        # 记录当前状态和动作
+        record = f"{current_state},{item},{reward}\n"
+        all_records.append(record)
+
+        # 更新状态（将最新的商品加入状态序列）
+        current_state = current_state[1:] + [item]
+
+# 按顺序分割数据集(70%训练，30%测试)
+split_point = int(len(all_records) * 0.7)
+train_records = all_records[:split_point]
+test_records = all_records[split_point:]
+
+# 保存训练数据
+with open('dataset/train_data.txt', 'w') as f:
+    for record in train_records:
+        f.write(record)
+
+# 保存测试数据
+with open('dataset/test_data.txt', 'w') as f:
+    for record in test_records:
+        f.write(record)
+
+print(f"总数据量: {len(all_records)}")
+print(f"训练集数量: {len(train_records)} (70%)")
+print(f"测试集数量: {len(test_records)} (30%)")
+
