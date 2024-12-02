@@ -1,18 +1,7 @@
-This is the final project for CSCE642
-### Dataset
-Dataset files are all in dataset folder. We utilized a real-world dataset collected by RetailRocket from an e-commerce website: [source](https://github.com/caserec/Datasets-for-Recommender-Systems/blob/master/Processed%20Datasets/RetailrocketEcommerce). The dataset comprises 92,490 interactions between 3,431 users and 8,885 items, with each user having viewed at least 10 items. These interactions include viewing items, adding items to the cart, and purchasing items.
-
-The original dataset is organized into three separate data files based on interaction types:
-
-- `add_to_cart_ecommerce.dat`: Dataset of items added to the cart by customers (used in our project)
-- `purchase_ecommerce.dat`: Records of items purchased by customers (used in our project)
-
-The other two datasets can be ignored for the purposes of this project.
-
 # DQN-Based Recommendation System
 
 ## Introduction
-This project implements a recommendation system using a basic Deep Q-Network (DQN) model. The codebase provides a complete framework for data preprocessing, training, and evaluation of the recommendation system on real e-commerce data. This README file will guide you through setting up the environment, running the code, and understanding the results.
+This is the final project for CSCE642. The project implements a recommendation system using a basic Deep Q-Network (DQN) model. The codebase provides a complete framework for data preprocessing, training, and test of the recommendation system on real e-commerce data. This README file will guide you through setting up the environment, running the code, and understanding the results.
 
 ## Prerequisites
 
@@ -22,16 +11,12 @@ To use the code, you need the following installed:
 - PyTorch 1.8+
 - NumPy
 - Matplotlib
-
-To install the required Python libraries, you can use the following command:
-
-```sh
-pip install -r requirements.txt
-```
+- Anaconda
+- pandas
 
 ## Dataset
 
-We utilized a real-world dataset collected by RetailRocket from an e-commerce website: [source](https://github.com/caserec/Datasets-for-Recommender-Systems/blob/master/Processed%20Datasets/RetailrocketEcommerce). The dataset comprises 92,490 interactions between 3,431 users and 8,885 items, with each user having viewed at least 10 items. These interactions include viewing items, adding items to the cart, and purchasing items.
+All dataset files are saved in the dataset folder. We utilized a real-world dataset collected by RetailRocket from an e-commerce website: [source](https://github.com/caserec/Datasets-for-Recommender-Systems/blob/master/Processed%20Datasets/RetailrocketEcommerce). The dataset comprises 92,490 interactions between 3,431 users and 8,885 items, with each user having viewed at least 10 items. These interactions include viewing items, adding items to the cart, and purchasing items.
 
 The original dataset is organized into three separate data files based on interaction types:
 
