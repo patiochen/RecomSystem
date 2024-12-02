@@ -4,42 +4,42 @@ from dqn import DQN
 
 
 def visualize_single_episode():
-    # 加载模型
+    # load trained model
     state_size = 5
     action_size = 8885
     model = DQN(state_size, action_size)
     model.load_state_dict(torch.load('recommender_model.pth'))
     model.eval()
 
-    # 加载测试数据
+    # load test dataset
     test_data = load_test_data()
     print(f"Loaded {len(test_data)} test samples")
 
-    # 选择一个episode长度
-    episode_length = 200  # 展示50个时间步
+    # show 200 recomendation results in one eps
+    episode_length = 200  # show first 200 points
 
-    # 记录推荐序列和对应的奖励
+    # record rec products and its reward at each time
     recommended_items = []
     actual_items = []
     rewards = []
 
-    # 对测试数据进行推荐
+    # recommend products for test set
     with torch.no_grad():
         for state, true_action, reward in test_data[:episode_length]:
-            # 获取模型推荐
+            # get recommendation
             state_tensor = torch.FloatTensor(state).unsqueeze(0)
             q_values = model(state_tensor)
             recommended_item = q_values.argmax().item()
 
-            # 记录推荐商品、实际商品和奖励
+            # record rec products, real products and reward
             recommended_items.append(recommended_item)
             actual_items.append(true_action)
             rewards.append(reward if recommended_item == true_action else 0)
 
-    # 创建时序图
+    # plot figures
     plt.figure(figsize=(15, 8))
 
-    # 绘制推荐序列
+    # figures for time seq of rec products
     plt.subplot(2, 1, 1)
     plt.plot(range(len(recommended_items)), recommended_items, 'b-', label='Recommended Items', marker='o')
     plt.plot(range(len(actual_items)), actual_items, 'r--', label='Actual Items', alpha=0.5)
@@ -49,7 +49,7 @@ def visualize_single_episode():
     plt.legend()
     plt.grid(True)
 
-    # 绘制奖励
+    # reward plots
     plt.subplot(2, 1, 2)
     plt.plot(range(len(rewards)), rewards, 'g-', label='Reward', marker='o')
     plt.xlabel('Time Step')
@@ -65,7 +65,7 @@ def visualize_single_episode():
 
 
 def load_test_data():
-    """加载测试数据"""
+    """load test dataset"""
     test_data = []
     with open('dataset/test_data.txt', 'r') as f:
         for line in f:

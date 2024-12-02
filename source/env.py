@@ -3,7 +3,7 @@ import numpy as np
 
 class RecommendEnv:
     def __init__(self):
-        # 初始化环境
+        # initila env
         self.state_size = 5
         self.state = [0] * self.state_size
         self.data = []
@@ -11,12 +11,12 @@ class RecommendEnv:
         self._load_data()
 
     def _load_data(self):
-        # 只加载训练数据
+        # load training set
         with open('dataset/train_data.txt', 'r') as f:
             self.data = f.readlines()
 
     def reset(self):
-        # 重置环境
+        # reset env
         self.state = [0] * self.state_size
         self.current_step = 0
         return self.state
@@ -25,12 +25,12 @@ class RecommendEnv:
         if self.current_step >= len(self.data):
             return self.state, 0, True, {}
 
-        # 获取真实的动作和奖励
+        # get real data
         line = self.data[self.current_step].strip()
         true_action = int(line.split(',')[-2])
         reward = float(line.split(',')[-1])
 
-        # 更新状态和奖励
+        # update state and reward
         if action == true_action:
             obtained_reward = reward
             self.state = self.state[1:] + [action]
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     state = env.reset()
     print(f"Initial state: {state}")
 
-    action = 1  # 测试动作
+    action = 1  # test action if it will update
     next_state, reward, done, _ = env.step(action)
 
     print(f"Action: {action}")

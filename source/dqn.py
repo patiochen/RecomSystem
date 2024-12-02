@@ -19,7 +19,7 @@ class DQN(nn.Module):
 
 
 def load_training_data():
-    """加载训练数据"""
+    """load training set"""
     train_data = []
     with open('dataset/train_data.txt', 'r') as f:
         for line in f:
@@ -55,31 +55,31 @@ def load_test_data():
 
 
 def plot_training_metrics(loss_history, reward_history, q_value_history, recommend_history):
-    """绘制训练指标"""
+    """ploy figures"""
     plt.figure(figsize=(20, 5))
 
-    # Loss曲线
+    # loss function
     plt.subplot(141)
     plt.plot(loss_history)
     plt.title('Loss per Episode')
     plt.xlabel('Episode')
     plt.ylabel('Loss')
 
-    # 平均reward曲线
+    # reward - fig2
     plt.subplot(142)
     plt.plot(reward_history)
     plt.title('Average Reward per Episode')
     plt.xlabel('Episode')
     plt.ylabel('Average Reward')
 
-    # 平均Q值曲线
+    # Q-value - fig3
     plt.subplot(143)
     plt.plot(q_value_history)
     plt.title('Average Q-Value per Episode')
     plt.xlabel('Episode')
     plt.ylabel('Average Q-Value')
 
-    # Top 10推荐商品
+    # top10 -fig4
     plt.subplot(144)
     items = sorted(recommend_history.items(), key=lambda x: x[1], reverse=True)[:10]
     items_id = [str(x[0]) for x in items]
@@ -96,7 +96,7 @@ def plot_training_metrics(loss_history, reward_history, q_value_history, recomme
 
 
 def plot_episode_recommendation(model, test_data, episode_length=200):
-    """绘制单个episode的推荐序列"""
+    """plot rec seq"""
     recommended_items = []
     actual_items = []
     rewards = []
@@ -113,7 +113,7 @@ def plot_episode_recommendation(model, test_data, episode_length=200):
 
     plt.figure(figsize=(15, 8))
 
-    # 推荐序列对比图
+    # rec seq plot
     plt.subplot(2, 1, 1)
     plt.plot(range(len(recommended_items)), recommended_items, 'b-', label='Recommended Items', marker='o')
     plt.plot(range(len(actual_items)), actual_items, 'r--', label='Actual Items', alpha=0.5)
@@ -123,7 +123,7 @@ def plot_episode_recommendation(model, test_data, episode_length=200):
     plt.legend()
     plt.grid(True)
 
-    # 奖励序列图
+    # reward seq plot
     plt.subplot(2, 1, 2)
     plt.plot(range(len(rewards)), rewards, 'g-', label='Reward', marker='o')
     plt.xlabel('Time Step')
@@ -142,11 +142,11 @@ def train_dqn(epochs=1000, batch_size=32):
     action_size = 8885
 
     try:
-        # 加载数据
+        # load traning set
         train_data = load_training_data()
         print(f"Loaded {len(train_data)} training samples")
 
-        # 创建网络
+        # create nn
         policy_net = DQN(state_size, action_size)
         target_net = DQN(state_size, action_size)
         target_net.load_state_dict(policy_net.state_dict())
@@ -154,7 +154,7 @@ def train_dqn(epochs=1000, batch_size=32):
         optimizer = optim.Adam(policy_net.parameters(), lr=0.001)
         criterion = nn.MSELoss()
 
-        # 记录训练历史
+        # tranining
         loss_history = []
         reward_history = []
         q_value_history = []
@@ -198,11 +198,11 @@ def train_dqn(epochs=1000, batch_size=32):
 
                 n_batches += 1
 
-            # 更新目标网络
+            # update target network
             if epoch % 5 == 0:
                 target_net.load_state_dict(policy_net.state_dict())
 
-            # 记录训练指标
+            # record tranning label
             if n_batches > 0:
                 avg_loss = total_loss / n_batches
                 avg_reward = total_reward / n_samples
@@ -215,10 +215,9 @@ def train_dqn(epochs=1000, batch_size=32):
                 print(f"Epoch {epoch + 1}/{epochs}, Loss: {avg_loss:.4f}, "
                       f"Avg Reward: {avg_reward:.4f}, Avg Q: {avg_q:.4f}")
 
-        # 绘制训练过程图表
+        # plot figures
         plot_training_metrics(loss_history, reward_history, q_value_history, recommend_history)
 
-        # 加载测试数据并绘制episode推荐序列
         test_data = load_test_data()
         plot_episode_recommendation(policy_net, test_data)
 
